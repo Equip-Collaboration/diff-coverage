@@ -1,5 +1,5 @@
 {
-  "name": "diff-line-numbers",
+  "name": "diff-coverage",
   "version": "1.0.0",
   "description": "This action outputs the line number of the deleted/added lines of modified or added files.",
   "main": "index.js",
@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Equip-Collaboration/diff-line-numbers.git"
+    "url": "git+https://github.com/Equip-Collaboration/diff-coverage.git"
   },
   "keywords": [
     "GitHub",
@@ -20,9 +20,9 @@
   ],
   "author": "Equip-Collaboration",
   "bugs": {
-    "url": "https://github.com/Equip-Collaboration/diff-line-numbers/issues"
+    "url": "https://github.com/Equip-Collaboration/diff-coverage/issues"
   },
-  "homepage": "https://github.com/Equip-Collaboration/diff-line-numbers#readme",
+  "homepage": "https://github.com/Equip-Collaboration/diff-coverage#readme",
   "dependencies": {
     "@actions/core": "^1.2.5",
     "@actions/exec": "^1.0.4",

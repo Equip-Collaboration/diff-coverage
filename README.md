@@ -46,7 +46,7 @@ jobs:
     steps:
       - name: Get diff lines
         id: diff
-        uses: Equip-Collaboration/diff-line-numbers@v1
+        uses: Equip-Collaboration/diff-coverage@v1
         with:
           include: '["\\.js$", "\\.jsx$"]'
           ignore: '["^dist/", "^bin/", "^www/"]'

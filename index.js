@@ -75,6 +75,8 @@ async function run() {
 /**
  * Gets the diffs (one for each file) between `base` and `head`
  *
+ * git diff docs: <https://git-scm.com/docs/git-diff>
+ *
  * @param {string} base The git ref to compare from
  * @param {string} head The git ref to compare to
  * @param {string[]} paths The paths of the files to compare
@@ -91,7 +93,7 @@ async function getDiffs(base, head, paths) {
       'diff',
       '-U0',
       `--minimal`,
-      `--diff-filter=ad`,
+      `--diff-filter=AM`,
       `--inter-hunk-context=0`,
       `-w`,
       `${base}`,
@@ -117,6 +119,8 @@ async function getDiffs(base, head, paths) {
  * includes all.
  * - Do not return paths that match a regular expression in `ignore`. By
  * default ignores none.
+ *
+ * git diff docs: <https://git-scm.com/docs/git-diff>
  *
  * @param {string} base The git ref to compare from
  * @param {string} head The git ref to compare to
@@ -144,7 +148,7 @@ async function getPaths(base, head, include = [''], ignore = []) {
   const { stdout } = await execAsync('git', [
     'diff',
     '--name-only',
-    `--diff-filter=ad`,
+    `--diff-filter=AM`,
     `-w`,
     `${base}`,
     `--`

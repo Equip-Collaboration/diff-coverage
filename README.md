@@ -1,8 +1,10 @@
-# Diff line numbers javascript action
+# Diff coverage
 
-This action outputs the line number of the deleted/added lines of modified or added files.
+Checks that the added and modified lines are covered by unit tests
 
 The line numbers are obtained by parsing the patch chunks of each file given by `git diff`
+
+The coverage is obtained from an artifact previously uploaded. It must be an artifact named `coverageArtifact` containing the file `coverage-final.json`.
 
 NOTE: Requires having used `actions/checkout@v2` in a previous step.
 
@@ -16,40 +18,30 @@ NOTE: Requires having used `actions/checkout@v2` in a previous step.
 
 **Optional** JSON array. Do not process paths that match a regular expression in `ignore`. By default ignores none.
 
-## Outputs
+### `repoDirectory`
 
-### `lineNumbers`
-
-An array with the files' path, added lines and removed lines. It looks like:
-```javascript
-[
-  {
-    path: string,
-    added: number[],
-    removed: number[]
-  },
-  ...
-]
-```
-- `path` is the file's path, e.g. `package.json` and `src/index.js`.
-- `added` is an array of numbers. Each number is the line number of an added line.
-- `removed` is an array of numbers. Each number is the line number of a removed line.
+**Required** The directory where the tests were run
 
 ## Example usage
 
 ```yml
 name: example
-on: [pull_request]
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+      - develop
 jobs:
   example:
     runs-on: ubuntu-latest
     steps:
-      - name: Get diff lines
-        id: diff
+      - uses: actions/checkout@v2
+      - name: Check coverage
         uses: Equip-Collaboration/diff-coverage@v1
         with:
           include: '["\\.js$", "\\.jsx$"]'
-          ignore: '["^dist/", "^bin/", "^www/"]'
-      - name: Print line numbers of changed lines
-        run: echo Line numbers = ${{ toJSON(steps.diff.outputs.lineNumbers) }}
+          ignore: '["^dist/", "\\.test\\.js$", "^www/"]'
+          repoDirectory: ${{ github.workspace }}
 ```

@@ -61,7 +61,7 @@ async function run() {
     core.debug(`run: lines=${JSON.stringify(lines, null, 2)}`)
     core.endGroup()
 
-    const coverage = getCoverage()
+    const coverage = await getCoverage()
 
     core.startGroup('run: coverage')
     core.debug(`run: coverage=${JSON.stringify(coverage, null, 2)}`)

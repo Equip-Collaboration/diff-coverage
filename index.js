@@ -1,6 +1,9 @@
+const artifact = require('@actions/artifact')
 const core = require('@actions/core')
 const exec = require('@actions/exec')
 const github = require('@actions/github')
+const fsPromises = require('fs').promises
+const { join: joinPaths } = require('path')
 
 run()
 
@@ -12,11 +15,11 @@ async function run() {
   core.debug('run: Starting...')
 
   try {
-    const include = core.getInput('include')
-    const ignore = core.getInput('ignore')
+    const include = getInclude()
+    const ignore = getIgnore()
 
-    core.debug(`run: include=${JSON.stringify(include, null, 2)}`)
-    core.debug(`run: ignore=${JSON.stringify(ignore, null, 2)}`)
+    core.debug(`run: include=[${include}]`)
+    core.debug(`run: ignore=[${ignore}]`)
 
     const { base, head } = getRefs()
 
@@ -29,12 +32,7 @@ async function run() {
 
     core.debug(`run: ${base} fetched`)
 
-    const paths = await getPaths(
-      base,
-      head,
-      JSON.parse(include),
-      JSON.parse(ignore)
-    )
+    const paths = await getPaths(base, head, include, ignore)
 
     core.debug(`run: paths=${JSON.stringify(paths, null, 2)}`)
 
@@ -50,26 +48,141 @@ async function run() {
     core.debug(`run: lineNumbers=${JSON.stringify(lineNumbers, null, 2)}`)
     core.endGroup()
 
-    const output = []
+    const lines = []
     for (let i = 0; i < paths.length; i++) {
-      output.push({
+      lines.push({
         path: paths[i],
         added: lineNumbers[i].added,
         removed: lineNumbers[i].removed
       })
     }
 
-    core.startGroup('run: output')
-    core.debug(`run: output=${JSON.stringify(output, null, 2)}`)
+    core.startGroup('run: lines')
+    core.debug(`run: lines=${JSON.stringify(lines, null, 2)}`)
     core.endGroup()
 
-    core.setOutput('lineNumbers', output)
-  } catch (error) {
-    core.error(error)
+    const coverage = getCoverage()
 
-    core.setFailed(error.message)
+    core.startGroup('run: coverage')
+    core.debug(`run: coverage=${JSON.stringify(coverage, null, 2)}`)
+    core.endGroup()
+
+    const untestedLines = getUntestedAddedLines(lines, coverage)
+
+    core.startGroup('run: untestedLines')
+    core.debug(`run: untestedLines=${JSON.stringify(untestedLines, null, 2)}`)
+    core.endGroup()
+
+    if (untestedLines.length) {
+      core.setFailed(`Missing tests for ${untestedLines.length} files.`)
+
+      for (let i = 0; i < untestedLines.length; i++) {
+        const { path, all } = untestedLines[i]
+        core.error(
+          `Coverage: ${path} is missing tests for lines ${JSON.stringify(all)}`
+        )
+      }
+    }
+  } catch (error) {
+    core.setFailed(error)
   }
   core.debug('run: Ended')
+}
+
+/**
+ * Gets the `include` input and parses it to an array of regular expressions.
+ *
+ * @returns {RegExp[]} The parsed regular expressions
+ */
+function getInclude() {
+  let includeInput = core.getInput('include')
+
+  core.debug(
+    `getInclude: includeInput=${JSON.stringify(includeInput, null, 2)}`
+  )
+
+  if (!includeInput) {
+    includeInput = `[""]`
+    core.debug(`getInclude: default=${includeInput}`)
+  }
+
+  let includeStrings
+  try {
+    includeStrings = JSON.parse(includeInput)
+  } catch (e) {
+    core.error(`getInclude: Could not parse include=${includeInput}`)
+    throw e
+  }
+
+  core.debug(
+    `getInclude: includeStrings=${JSON.stringify(includeInput, null, 2)}`
+  )
+
+  if (!(includeStrings instanceof Array)) {
+    core.error(
+      `getInclude: include parsed to ${JSON.stringify(includeStrings)}`
+    )
+    throw new Error('Error parsing "include" to array')
+  }
+
+  const include = includeStrings.map(str => {
+    try {
+      return new RegExp(str)
+    } catch (e) {
+      core.error(`getInclude: Could not parse ${str} to a regular expression`)
+      throw e
+    }
+  })
+
+  core.debug(`getInclude: include=${includeInput}`)
+
+  return include
+}
+
+/**
+ * Gets the `ignore` input and parses it to an array of regular expressions.
+ *
+ * @returns {RegExp[]} The parsed regular expressions
+ */
+function getIgnore() {
+  let includeInput = core.getInput('ignore')
+
+  core.debug(`getIgnore: includeInput=${JSON.stringify(includeInput, null, 2)}`)
+
+  if (!includeInput) {
+    includeInput = `[]`
+    core.debug(`getIgnore: default=${includeInput}`)
+  }
+
+  let includeStrings
+  try {
+    includeStrings = JSON.parse(includeInput)
+  } catch (e) {
+    core.error(`getIgnore: Could not parse ignore=${includeInput}`)
+    throw e
+  }
+
+  core.debug(
+    `getIgnore: includeStrings=${JSON.stringify(includeInput, null, 2)}`
+  )
+
+  if (!(includeStrings instanceof Array)) {
+    core.error(`getIgnore: ignore parsed to ${JSON.stringify(includeStrings)}`)
+    throw new Error('Error parsing "ignore" to array')
+  }
+
+  const ignore = includeStrings.map(str => {
+    try {
+      return new RegExp(str)
+    } catch (e) {
+      core.error(`getIgnore: Could not parse ${str} to a regular expression`)
+      throw e
+    }
+  })
+
+  core.debug(`getIgnore: ignore=${includeInput}`)
+
+  return ignore
 }
 
 /**
@@ -124,26 +237,12 @@ async function getDiffs(base, head, paths) {
  *
  * @param {string} base The git ref to compare from
  * @param {string} head The git ref to compare to
- * @param {string[]} include A list of regular expressions
- * @param {string[]} ignore A list of regular expressions
+ * @param {RegExp[]} include A list of regular expressions
+ * @param {RegExp[]} ignore A list of regular expressions
  * @returns {string[]} The paths
  */
-async function getPaths(base, head, include = [''], ignore = []) {
-  const includeRegexps = include.map(re => new RegExp(re))
-
-  core.debug(
-    `getPaths: includeRegexps=${JSON.stringify(
-      includeRegexps.map(re => re.toString())
-    )}`
-  )
-
-  const ignoreRegexps = ignore.map(re => new RegExp(re))
-
-  core.debug(
-    `getPaths: ignoreRegexps=${JSON.stringify(
-      ignoreRegexps.map(re => re.toString())
-    )}`
-  )
+async function getPaths(base, head, include, ignore) {
+  core.debug(`getPaths: Starting...`)
 
   const { stdout } = await execAsync('git', [
     'diff',
@@ -161,8 +260,8 @@ async function getPaths(base, head, include = [''], ignore = []) {
     .filter(
       path =>
         path &&
-        includeRegexps.some(re => re.test(path)) &&
-        !ignoreRegexps.some(re => re.test(path))
+        include.some(re => re.test(path)) &&
+        !ignore.some(re => re.test(path))
     )
 }
 
@@ -293,4 +392,202 @@ async function execAsync(command, args = [], options = {}) {
   }
 
   return { stdout: outArray.join(''), stderr: errArray.join(''), code }
+}
+
+/**
+ * Downloads the artifact `coverageArtifact`, reads it and returns it parsed.
+ *
+ * Expects the downloaded artifact to be `coverage-final.json`
+ *
+ * @returns {object} The parsed artifact
+ */
+async function getCoverage() {
+  core.debug(`getCoverage: Starting...`)
+
+  const artifactClient = artifact.create()
+  const artifactName = 'coverageArtifact'
+  const path = '~/downloads'
+  const options = {
+    createArtifactFolder: true
+  }
+
+  core.debug(`getCoverage: Downloading artifact...`)
+
+  const downloadResult = await artifactClient.downloadArtifact(
+    artifactName,
+    path,
+    options
+  )
+
+  core.debug(
+    `getCoverage: downloadResult=${JSON.stringify(downloadResult, null, 2)}`
+  )
+
+  const coverageFile = await fsPromises.readFile(
+    joinPaths(downloadResult.downloadPath, 'coverage-final.json'),
+    'utf8'
+  )
+
+  core.startGroup('getCoverage: coverageFile')
+  core.debug(
+    `getCoverage: coverageFile=${JSON.stringify(coverageFile, null, 2)}`
+  )
+  core.endGroup()
+
+  const coverage = JSON.parse(coverageFile)
+
+  core.startGroup('getCoverage: coverage')
+  core.debug(`getCoverage: coverage=${JSON.stringify(coverage, null, 2)}`)
+  core.endGroup()
+
+  return coverage
+}
+
+/**
+ * Returns the line number of each untested added line.
+ *
+ * The received coverage object must be a parsed istambul JSON coverage report,
+ * like the one generated by Jest. More details in
+ * <https://istanbul.js.org/docs/advanced/alternative-reporters/#json>.
+ *
+ * - Returns an array of objects.
+ * - Each object represents a file that has some untested lines.
+ * - If the `hasTests` attribute is `false`, then the file was not tested.
+ * - The `all` attribute has the line number of each untested lines.
+ * - The `statements`, `functions`, `ifs` and `elses` attributes have the line
+ * numbers corresponding to that category of test missing.
+ *
+ * Returned array:
+ * ```javascript
+ * [{
+ *   path: string,
+ *   hasTests: boolean,
+ *   all: number[],
+ *   statements: number[],
+ *   functions: number[],
+ *   ifs: number[],
+ *   elses: number[]
+ * }]
+ * ```
+ *
+ * @param {object[]} lines New lines in each file
+ * @param {string} lines[].path The file's path
+ * @param {number[]} lines[].added Added (or modified) lines' numbers
+ * @param {object} coverage A parsed istanbul JSON coverage report
+ * @returns {object[]} The untested added lines
+ */
+function getUntestedAddedLines(lines, coverage) {
+  core.debug(`getUntestedAddedLines: starting`)
+
+  const baseDir = core.getInput('repoDirectory')
+
+  core.debug(
+    `getUntestedAddedLines: baseDir=${JSON.stringify(baseDir, null, 2)}`
+  )
+
+  const untestedAddedLines = []
+  for (let i = 0; i < lines.length; i++) {
+    const { path, added } = lines[i]
+    const fullPath = joinPaths(baseDir, path)
+    const result = {
+      path,
+      hasTests: true,
+      all: [],
+      statements: [],
+      functions: [],
+      ifs: [],
+      elses: []
+    }
+    const fileCoverage = coverage[fullPath]
+    if (!fileCoverage) {
+      result.hasTests = false
+      untestedAddedLines.push(result)
+    } else {
+      const addedSet = new Set(added)
+      const untestedAddedLinesSet = new Set()
+      const { statements, functions, ifs, elses } = result
+
+      Object.entries(fileCoverage.s).forEach(([k, v]) => {
+        if (v === 0) {
+          const {
+            start: { line: start },
+            end: { line: end }
+          } = fileCoverage.statementMap[k]
+
+          getIntegersInRangeInSet(start, end, addedSet).forEach(l => {
+            statements.push(l)
+            untestedAddedLinesSet.add(l)
+          })
+        }
+      })
+
+      Object.entries(fileCoverage.f).forEach(([k, v]) => {
+        if (v === 0) {
+          const {
+            start: { line: start },
+            end: { line: end }
+          } = fileCoverage.fnMap[k].loc
+
+          getIntegersInRangeInSet(start, end, addedSet).forEach(l => {
+            functions.push(l)
+            untestedAddedLinesSet.add(l)
+          })
+        }
+      })
+
+      Object.entries(fileCoverage.b).forEach(([k, v]) => {
+        const [ifBranchTests, elseBranchTests] = v
+
+        if (ifBranchTests === 0 || elseBranchTests === 0) {
+          const {
+            start: { line: start },
+            end: { line: end }
+          } = fileCoverage.branchMap[k].loc
+
+          getIntegersInRangeInSet(start, end, addedSet).forEach(l => {
+            if (ifBranchTests === 0 || elseBranchTests === 0) {
+              if (ifBranchTests === 0) {
+                ifs.push(l)
+              }
+              if (elseBranchTests === 0) {
+                elses.push(l)
+              }
+              untestedAddedLinesSet.add(l)
+            }
+          })
+        }
+      })
+
+      if (untestedAddedLinesSet.size) {
+        result.all = Array.from(untestedAddedLinesSet)
+        result.all.sort((a, b) => a - b)
+        untestedAddedLines.push(result)
+      }
+    }
+  }
+
+  return untestedAddedLines
+}
+
+/**
+ * Returns an array with the numbers (integers) in `set` that are in the range.
+ *
+ * @example
+ * ```javascript
+ * const set = new Set([1, 2, 3, 4, 5])
+ * console.log(getIntegersInRangeInSet(2, 4, set))
+ * // [ 2, 3, 4 ]
+ * ```
+ *
+ * @param {number} start The start of the range
+ * @param {number} end The end of the range
+ * @param {Set} set The Set where the numbers will be checked
+ * @returns {number[]} Integers in the range and the set, in ascending order
+ */
+function getIntegersInRangeInSet(start, end, set) {
+  const result = []
+  for (let i = start; i <= end; i++) {
+    if (set.has(i)) result.push(i)
+  }
+  return result
 }

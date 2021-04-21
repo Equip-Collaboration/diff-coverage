@@ -1,4 +1,4 @@
-name: "Test this action on this action"
+name: "Lint"
 on:
   pull_request:
   push:
@@ -29,17 +29,3 @@ jobs:
       - run: npm ci
 
       - run: npm run lint
-
-  # test action
-  testAction:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - uses: ./
-        id: diff
-        with:
-          include: '["\\.js$", "\\.jsx$"]'
-          ignore: '["^dist/", "^bin/", "^www/"]'
-      - name: Print line numbers of changed lines
-        run: echo Line numbers = ${{ toJSON(steps.diff.outputs.lineNumbers) }}

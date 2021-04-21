@@ -1,6 +1,9 @@
-name: 'Diff line numbers'
-description: 'Outputs the line number of the deleted/added lines of modified or added files.'
+name: 'diff-coverage'
+description: 'Checks that the added and modified lines are covered by unit tests'
 inputs:
+  repoDirectory:
+    description: 'The directory where the tests were run'
+    required: true
   include:
     description: 'JSON array. Only process paths that match a regular expression in `include`. By default includes all.'
     required: false
@@ -9,9 +12,6 @@ inputs:
     description: 'JSON array. Do not process paths that match a regular expression in `ignore`. By default ignores none.'
     required: false
     default: '[]'
-outputs:
-  lineNumbers:
-    description: "{ path: string, added: number[], removed: number[] }[]"
 runs:
   using: 'node12'
   main: 'dist/index.js'

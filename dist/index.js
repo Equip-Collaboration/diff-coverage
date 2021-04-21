@@ -84,10 +84,16 @@ async function run() {
       core.setFailed(`Missing tests for ${untestedLines.length} files.`)
 
       for (let i = 0; i < untestedLines.length; i++) {
-        const { path, all } = untestedLines[i]
-        core.error(
-          `Coverage: ${path} is missing tests for lines ${JSON.stringify(all)}`
-        )
+        const { path, all, hasTests } = untestedLines[i]
+        if (hasTests) {
+          core.error(
+            `Coverage: ${path} is missing tests for lines ${JSON.stringify(
+              all
+            )}`
+          )
+        } else {
+          core.error(`Coverage: ${path} is not being tested`)
+        }
       }
     }
   } catch (error) {

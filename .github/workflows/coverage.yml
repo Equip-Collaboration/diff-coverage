@@ -42,8 +42,12 @@ jobs:
     if: always()
     steps:
       - uses: actions/checkout@v2
+      - run: git branch
+      - run: git log
       - uses: Equip-Collaboration/diff-coverage@v1.0.2
         with:
           repoDirectory: ${{ github.workspace }}
           include: '["\\.js$"]'
           ignore: '["\\.test\\.js$"]'
+      - run: git branch
+      - run: git log

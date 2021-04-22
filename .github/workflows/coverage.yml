@@ -42,7 +42,7 @@ jobs:
     if: always()
     steps:
       - uses: actions/checkout@v2
-      - uses: Equip-Collaboration/diff-coverage@v1
+      - uses: Equip-Collaboration/diff-coverage@v1.0.2
         with:
           repoDirectory: ${{ github.workspace }}
           include: '["\\.js$"]'

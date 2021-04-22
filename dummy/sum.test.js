@@ -4,6 +4,10 @@ describe('sum2', () => {
   test('1 + 2 = 3', () => {
     expect(sum2(1, 2)).toBe(3)
   })
+
+  test('2 + 1 = 3', () => {
+    expect(sum2(2, 1)).toBe(3)
+  })
 })
 
 describe('sumX', () => {

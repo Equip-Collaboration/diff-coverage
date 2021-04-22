@@ -43,7 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          fetch-depth: 0
+          fetch-depth: 1
       - run: git branch
       - run: git log
       - uses: Equip-Collaboration/diff-coverage@v1.0.2

@@ -1,4 +1,4 @@
-const { sum2, sumX } = require('./sum.js')
+const { sum2, sumX, dummyFun } = require('./sum.js')
 
 describe('sum2', () => {
   test('1 + 2 = 3', () => {
@@ -17,5 +17,11 @@ describe('sumX', () => {
 
   test('three args: 1 + 2 + 3 = 6', () => {
     expect(sumX(1, 2, 3)).toBe(6)
+  })
+})
+
+describe('dummyFun', () => {
+  test('return "dummy string"', () => {
+    expect(dummyFun()).toBe('dummy string')
   })
 })

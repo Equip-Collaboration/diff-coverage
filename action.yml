@@ -3,7 +3,8 @@ description: 'Checks that the added and modified lines are covered by unit tests
 inputs:
   repoDirectory:
     description: 'The directory where the tests were run'
-    required: true
+    required: false
+    default: ${{ github.workspace }}
   include:
     description: 'JSON array. Only process paths that match a regular expression in `include`. By default includes all.'
     required: false

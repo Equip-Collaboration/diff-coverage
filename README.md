@@ -20,7 +20,7 @@ NOTE: Requires having used `actions/checkout@v2` in a previous step.
 
 ### `repoDirectory`
 
-**Required** The directory where the tests were run
+**Optional** The directory where the tests were run. Defaults to `${{ github.workspace }}`
 
 ## Example usage
 

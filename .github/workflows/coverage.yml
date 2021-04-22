@@ -50,4 +50,6 @@ jobs:
           include: '["\\.js$"]'
           ignore: '["\\.test\\.js$"]'
       - run: git branch
+        if: always()
       - run: git log
+        if: always()

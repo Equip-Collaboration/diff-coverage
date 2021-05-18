@@ -467,7 +467,7 @@ async function getCoverage() {
  * - Each object represents a file that has some untested lines.
  * - If the `hasTests` attribute is `false`, then the file was not tested.
  * - The `all` attribute has the line number of each untested lines.
- * - The `statements`, `functions`, `ifs` and `elses` attributes have the line
+ * - The `statements`, `functions` and `branches` attributes have the line
  * numbers corresponding to that category of test missing.
  *
  * Returned array:
@@ -478,8 +478,7 @@ async function getCoverage() {
  *   all: number[],
  *   statements: number[],
  *   functions: number[],
- *   ifs: number[],
- *   elses: number[]
+ *   branches: number[]
  * }]
  * ```
  *
@@ -508,8 +507,7 @@ function getUntestedAddedLines(lines, coverage) {
       all: [],
       statements: [],
       functions: [],
-      ifs: [],
-      elses: []
+      branches: []
     }
     const fileCoverage = coverage[fullPath]
     if (!fileCoverage) {
@@ -518,7 +516,7 @@ function getUntestedAddedLines(lines, coverage) {
     } else {
       const addedSet = new Set(added)
       const untestedAddedLinesSet = new Set()
-      const { statements, functions, ifs, elses } = result
+      const { statements, functions, branches } = result
 
       Object.entries(fileCoverage.s).forEach(([k, v]) => {
         if (v === 0) {
@@ -548,27 +546,20 @@ function getUntestedAddedLines(lines, coverage) {
         }
       })
 
-      Object.entries(fileCoverage.b).forEach(([k, v]) => {
-        const [ifBranchTests, elseBranchTests] = v
+      Object.entries(fileCoverage.b).forEach(([key, tests]) => {
+        tests.forEach((timesTested, branchIndex) => {
+          if (timesTested === 0) {
+            const {
+              start: { line: start },
+              end: { line: end }
+            } = fileCoverage.branchMap[key].locations[branchIndex]
 
-        if (ifBranchTests === 0 || elseBranchTests === 0) {
-          const {
-            start: { line: start },
-            end: { line: end }
-          } = fileCoverage.branchMap[k].loc
-
-          getIntegersInRangeInSet(start, end, addedSet).forEach(l => {
-            if (ifBranchTests === 0 || elseBranchTests === 0) {
-              if (ifBranchTests === 0) {
-                ifs.push(l)
-              }
-              if (elseBranchTests === 0) {
-                elses.push(l)
-              }
+            getIntegersInRangeInSet(start, end, addedSet).forEach(l => {
+              branches.push(l)
               untestedAddedLinesSet.add(l)
-            }
-          })
-        }
+            })
+          }
+        })
       })
 
       if (untestedAddedLinesSet.size) {

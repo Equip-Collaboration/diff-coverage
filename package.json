@@ -1,6 +1,6 @@
 {
   "name": "diff-coverage",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Checks that the added and modified lines are covered by unit tests",
   "main": "index.js",
   "scripts": {

@@ -6,7 +6,7 @@ The line numbers are obtained by parsing the patch chunks of each file given by 
 
 The coverage is obtained from an artifact previously uploaded. It must be an artifact named `coverageArtifact` containing the file `coverage-final.json`.
 
-NOTE: Requires having used `actions/checkout@v2` in a previous step.
+NOTE: Requires having used `actions/checkout@v3` in a previous step.
 
 ## Inputs
 
@@ -37,7 +37,7 @@ jobs:
   example:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Check coverage
         uses: Equip-Collaboration/diff-coverage@v1
         with:

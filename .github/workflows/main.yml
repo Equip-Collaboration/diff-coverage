@@ -1,0 +1,45 @@
+name: "Lint"
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - 'releases/*'
+
+jobs:
+  lint:
+    name: Lint job
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Upgrade NPM
+        run: npm install -g npm@9
+
+      - name: Restore node_modules
+        uses: actions/cache@v4
+        id: node_modules_cache
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node_modules-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Restore npm cache (if necessary)
+        if: steps.node_modules_cache.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install Node modules (if necessary)
+        if: steps.node_modules_cache.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - run: npm run lint

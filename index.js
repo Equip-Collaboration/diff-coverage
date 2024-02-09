@@ -411,13 +411,19 @@ async function getCoverage() {
   core.debug(`getCoverage: Starting...`)
 
   const artifactClient = new DefaultArtifactClient()
-  const artifactName = 'coverageArtifact'
-  const path = '~/downloads'
+
+  core.debug(`getCoverage: Getting artifact id...`)
+
+  const { artifact } = await artifactClient.getArtifact('coverageArtifact')
+
+  core.debug(
+    `getCoverage: artifact metadata = ${JSON.stringify(artifact, null, 2)}`
+  )
 
   core.debug(`getCoverage: Downloading artifact...`)
 
-  const downloadResult = await artifactClient.downloadArtifact(artifactName, {
-    path
+  const downloadResult = await artifactClient.downloadArtifact(artifact.id, {
+    path: '~/downloads'
   })
 
   core.debug(

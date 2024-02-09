@@ -1,4 +1,4 @@
-const artifact = require('@actions/artifact')
+const { DefaultArtifactClient } = require('@actions/artifact')
 const core = require('@actions/core')
 const exec = require('@actions/exec')
 const github = require('@actions/github')
@@ -410,20 +410,15 @@ async function execAsync(command, args = [], options = {}) {
 async function getCoverage() {
   core.debug(`getCoverage: Starting...`)
 
-  const artifactClient = artifact.create()
+  const artifactClient = new DefaultArtifactClient()
   const artifactName = 'coverageArtifact'
   const path = '~/downloads'
-  const options = {
-    createArtifactFolder: true
-  }
 
   core.debug(`getCoverage: Downloading artifact...`)
 
-  const downloadResult = await artifactClient.downloadArtifact(
-    artifactName,
-    path,
-    options
-  )
+  const downloadResult = await artifactClient.downloadArtifact(artifactName, {
+    path
+  })
 
   core.debug(
     `getCoverage: downloadResult=${JSON.stringify(downloadResult, null, 2)}`
